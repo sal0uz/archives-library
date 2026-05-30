@@ -1,0 +1,72 @@
+{% extends 'archives/base.html' %}
+{% block title %}Book Quotes – Archives Library{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+  <div class="section-header" style="margin-bottom:24px"><div class="section-title">Book Quotes</div></div>
+  {% for q in quotes %}
+  <div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:8px;padding:20px 24px;margin-bottom:14px;position:relative">
+    <div style="font-style:italic;color:var(--text2);line-height:1.7;font-size:15px;margin-bottom:12px">"{{ q.body }}"</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="font-size:12px;color:var(--text3)">
+        — {{ q.user.get_full_name|default:q.user.username }} · {{ q.book.title|truncatechars:40 }}
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="like-btn" data-type="quote" data-id="{{ q.pk }}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;display:flex;align-items:center;gap:4px">
+          <span class="like-icon">{% if user in q.likes.all %}❤️{% else %}🤍{% endif %}</span>
+          <span class="like-count">{{ q.like_count }}</span>
+        </button>
+        {% if q.user == user %}
+        <button class="delete-btn" data-type="quote" data-id="{{ q.pk }}" style="background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:14px">🗑️</button>
+        {% endif %}
+        <div style="font-size:11px;color:var(--text3)">{{ q.created_at|date:"M d, Y" }}</div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="empty-state"><i class="fas fa-quote-left"></i><h3>No quotes yet</h3><p>Open a book and share a memorable quote!</p></div>
+  {% endfor %}
+</div>
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+    {% for cat in categories %}<a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>{% endfor %}
+  </div>
+</div>
+</div>
+{% endwith %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle like buttons
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const type = this.dataset.type;
+            const id = this.dataset.id;
+            const icon = this.querySelector('.like-icon');
+            const countSpan = this.querySelector('.like-count');
+            
+            const d = await postForm(`/quotes/like/${id}/`, new FormData());
+            if (d.ok) {
+                icon.textContent = d.liked ? '❤️' : '🤍';
+                countSpan.textContent = d.count;
+            }
+        });
+    });
+    
+    // Handle delete buttons
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to delete this?')) return;
+            
+            const id = this.dataset.id;
+            const itemDiv = this.closest('div[style*="background"]');
+            const d = await postForm(`/quotes/${id}/delete/`, new FormData());
+            if (d.ok) {
+                itemDiv.remove();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

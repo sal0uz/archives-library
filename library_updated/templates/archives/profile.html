@@ -1,0 +1,176 @@
+{% extends 'archives/base.html' %}
+{% block title %}My Profile – Archives Library{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+  <!-- PROFILE HERO -->
+  <div style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:1px solid var(--border);border-radius:12px;padding:32px;display:flex;align-items:center;gap:24px;margin-bottom:24px;flex-wrap:wrap">
+    <div style="position:relative;flex-shrink:0">
+      <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:32px;font-family:'Playfair Display',serif;font-weight:700;color:#0f0e0b;overflow:hidden">
+        {% if user.avatar %}<img src="{{ user.avatar.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ user.get_full_name|first|default:user.username|first|upper }}{% endif %}
+      </div>
+      <button onclick="document.getElementById('avatar-input').click()" style="position:absolute;bottom:0;right:0;background:var(--bg3);border:1px solid var(--border);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);font-size:11px"><i class="fas fa-camera"></i></button>
+      <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+    </div>
+    <div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--text);margin-bottom:4px">{{ user.get_full_name|default:user.username }}</h2>
+      <p style="color:var(--text3);font-size:14px">@{{ user.username }} · {{ user.email }}</p>
+      <div style="display:grid;grid-template-columns:repeat(5,minmax(100px,1fr));gap:24px;margin-top:12px;align-items:start">
+        <div style="text-align:center"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--gold)">{{ liked_count }}</div><div style="font-size:11px;color:var(--text3)">Liked</div></div>
+        <div style="text-align:center"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--gold)">{{ user.total_uploads }}</div><div style="font-size:11px;color:var(--text3)">Uploaded</div></div>
+        <div style="cursor:pointer;text-align:center;min-width:90px" onclick="openFollowersModal('{{ user.username }}')" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--gold)">{{ followers_count }}</div><div style="font-size:11px;color:var(--text3)">Followers</div></div>
+        <div style="cursor:pointer;text-align:center;min-width:90px" onclick="openFollowingModal('{{ user.username }}')" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--gold)">{{ following_count }}</div><div style="font-size:11px;color:var(--text3)">Following</div></div>
+        <div style="text-align:center"><div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--gold)">{{ user.total_reads }}</div><div style="font-size:11px;color:var(--text3)">Reads</div></div>
+      </div>
+      {% if user.bio %}<p style="margin-top:12px;font-size:14px;color:var(--text2);font-style:italic">{{ user.bio }}</p>{% endif %}
+    </div>
+    <button onclick="openModal('edit-profile-modal')" style="margin-left:auto;padding:10px 20px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><i class="fas fa-edit"></i> Edit Profile</button>
+  </div>
+</div>
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+    {% for cat in categories %}
+    <a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>
+    {% endfor %}
+  </div>
+</div>
+</div>
+
+<!-- Followers Modal -->
+<div class="modal-overlay" id="followers-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;padding:20px">
+  <div class="modal-box" style="width:90%;max-width:500px;max-height:80vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:var(--text);margin:0">Followers</h2>
+      <button onclick="document.getElementById('followers-modal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text2);padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="followers-list" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+</div>
+
+<!-- Following Modal -->
+<div class="modal-overlay" id="following-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;padding:20px">
+  <div class="modal-box" style="width:90%;max-width:500px;max-height:80vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:var(--text);margin:0">Following</h2>
+      <button onclick="document.getElementById('following-modal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text2);padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="following-list" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="edit-profile-modal">
+<div class="modal-box">
+  <div class="modal-title">Edit Profile</div>
+  <div class="form-grid">
+    <div class="form-group"><label class="form-label">First Name</label><input type="text" id="ep-first" class="form-input" value="{{ user.first_name }}"></div>
+    <div class="form-group"><label class="form-label">Last Name</label><input type="text" id="ep-last" class="form-input" value="{{ user.last_name }}"></div>
+    <div class="form-group span-2"><label class="form-label">Email</label><input type="email" id="ep-email" class="form-input" value="{{ user.email }}"></div>
+    <div class="form-group span-2"><label class="form-label">Bio</label><textarea id="ep-bio" class="form-input" style="height:80px">{{ user.bio }}</textarea></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-secondary" onclick="closeModal('edit-profile-modal')">Cancel</button>
+    <button class="btn-primary" onclick="saveProfile()" style="font-size:14px;padding:10px 24px">Save</button>
+  </div>
+</div>
+</div>
+{% endwith %}
+{% endblock %}
+{% block extra_js %}
+<script>
+async function saveProfile(){
+  const fd=new FormData();
+  fd.append('first_name',document.getElementById('ep-first').value);
+  fd.append('last_name',document.getElementById('ep-last').value);
+  fd.append('email',document.getElementById('ep-email').value);
+  fd.append('bio',document.getElementById('ep-bio').value);
+  fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm("{% url 'profile' %}",fd);
+  if(d.ok){showToast('Profile updated!','success');closeModal('edit-profile-modal');setTimeout(()=>location.reload(),1000)}
+  else showToast(d.error,'error');
+}
+async function uploadAvatar(input){
+  const f=input.files[0];if(!f)return;
+  const fd=new FormData();fd.append('avatar',f);fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await fetch("{% url 'profile' %}",{method:'POST',body:fd}).then(r=>r.json());
+  if(d.ok){showToast('Avatar updated!','success');setTimeout(()=>location.reload(),800)}
+  else showToast(d.error,'error');
+}
+
+async function openFollowersModal(username){
+  const modal=document.getElementById('followers-modal');
+  const list=document.getElementById('followers-list');
+  list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Loading followers...</p>';
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal){modal.style.display='none';}};
+  try{
+    const res=await fetch(`/api/followers/${username}/`);
+    const data=await res.json();
+    if(data.ok && data.followers.length > 0){
+      list.innerHTML=data.followers.map(u=>`
+        <div style="display:flex;flex-direction:column;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;color:#0f0e0b;flex-shrink:0;font-size:16px">
+                ${u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover">` : u.first_letter}
+              </div>
+              <div style="min-width:0">
+                <a href="/user/${u.username}/" style="color:var(--text);text-decoration:none;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.full_name || u.username}</a>
+                <p style="color:var(--text3);font-size:12px;margin:2px 0 0 0">@${u.username}</p>
+              </div>
+            </div>
+            <a href="/user/${u.username}/" class="btn-secondary" style="margin:0;white-space:nowrap;text-decoration:none;padding:6px 12px;font-size:12px">View</a>
+          </div>
+        </div>
+      `).join('');
+    } else if(data.ok){
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">No followers yet</p>';
+    } else {
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading followers</p>';
+    }
+  } catch(e){
+    console.error('Followers error:', e);
+    list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading followers</p>';
+  }
+}
+
+async function openFollowingModal(username){
+  const modal=document.getElementById('following-modal');
+  const list=document.getElementById('following-list');
+  list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Loading following...</p>';
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal){modal.style.display='none';}};
+  try{
+    const res=await fetch(`/api/following/${username}/`);
+    const data=await res.json();
+    if(data.ok && data.following.length > 0){
+      list.innerHTML=data.following.map(u=>`
+        <div style="display:flex;flex-direction:column;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;color:#0f0e0b;flex-shrink:0;font-size:16px">
+                ${u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover">` : u.first_letter}
+              </div>
+              <div style="min-width:0">
+                <a href="/user/${u.username}/" style="color:var(--text);text-decoration:none;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.full_name || u.username}</a>
+                <p style="color:var(--text3);font-size:12px;margin:2px 0 0 0">@${u.username}</p>
+              </div>
+            </div>
+            <a href="/user/${u.username}/" class="btn-secondary" style="margin:0;white-space:nowrap;text-decoration:none;padding:6px 12px;font-size:12px">View</a>
+          </div>
+        </div>
+      `).join('');
+    } else if(data.ok){
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Not following anyone</p>';
+    } else {
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading following</p>';
+    }
+  } catch(e){
+    console.error('Following error:', e);
+    list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading following</p>';
+  }
+}
+</script>
+{% endblock %}

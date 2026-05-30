@@ -1,0 +1,116 @@
+{% extends 'archives/admin/base_admin.html' %}
+{% block admin_title %}Users{% endblock %}{% block active_users %}active{% endblock %}
+{% block admin_content %}
+<h2 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:24px;color:var(--text)">Manage Users</h2>
+<div class="data-table-wrapper">
+  <div class="data-table-header">
+    <span style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--text)">Registered Users ({{ users|length }})</span>
+    <input type="text" class="form-input" placeholder="Search by username…" style="width:220px" oninput="filterTable(this,'users-tbody',0)">
+  </div>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr><th>Avatar</th><th>Username</th><th>Full Name</th><th>Email</th><th>Status</th><th>Online</th><th>Uploads</th><th>Downloads</th><th>Joined</th><th>Actions</th></tr></thead>
+    <tbody id="users-tbody">
+    {% for u in users %}
+    <tr id="user-row-{{ u.pk }}">
+      <td>
+        {% if u.avatar %}
+          <img src="{{ u.avatar.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+        {% else %}
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:14px;color:#0f0e0b;font-weight:700">{{ u.get_full_name|first|default:u.username|first|upper }}</div>
+        {% endif %}
+      </td>
+      <td style="color:var(--gold);font-weight:600">@{{ u.username }}</td>
+      <td>{{ u.get_full_name|default:"—" }}</td>
+      <td style="font-size:12px;color:var(--text3)">{{ u.email }}</td>
+      <td>
+        <span class="badge {% if u.is_currently_banned %}badge-red{% else %}badge-green{% endif %}" id="status-badge-{{ u.pk }}">
+          {% if u.is_currently_banned %}⛔ Banned{% else %}✓ Active{% endif %}
+        </span>
+        {% if u.ban_until and u.is_currently_banned %}
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">until {{ u.ban_until|date:"M d, Y" }}</div>
+        {% endif %}
+      </td>
+      <td>
+        {% if u.is_online %}
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#27ae60"><span style="width:8px;height:8px;border-radius:50%;background:#27ae60;display:inline-block"></span>Online</span>
+        {% else %}
+          <span style="font-size:12px;color:var(--text3)">{{ u.last_online|timesince }} ago</span>
+        {% endif %}
+      </td>
+      <td style="font-family:'JetBrains Mono',monospace">{{ u.total_uploads }}</td>
+      <td style="font-family:'JetBrains Mono',monospace">{{ u.total_downloads }}</td>
+      <td style="font-size:12px;color:var(--text3)">{{ u.date_joined|date:"M d, Y" }}</td>
+      <td style="white-space:nowrap">
+        {% if u.is_currently_banned %}
+          <button class="action-btn success" onclick="unbanUser({{ u.pk }})">Unban</button>
+        {% else %}
+          <button class="action-btn" onclick="openBanModal({{ u.pk }},'{{ u.username|escapejs }}')" style="color:var(--gold);border-color:rgba(201,168,76,.3)">Ban</button>
+        {% endif %}
+        <button class="action-btn danger" onclick="confirmAction('Delete User','Permanently delete @{{ u.username|escapejs }}? All their data will be lost.',()=>deleteUser({{ u.pk }}))">Delete</button>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="10" style="padding:32px;text-align:center;color:var(--text3)">No users registered yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- BAN MODAL -->
+<div class="modal-overlay" id="ban-modal">
+<div class="modal-box" style="max-width:420px">
+  <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">Ban User</div>
+  <p style="color:var(--text3);font-size:14px;margin-bottom:20px">Ban <strong id="ban-username" style="color:var(--gold)"></strong> for how long?</p>
+  <div class="form-group"><label class="form-label">Duration (days)</label>
+    <select id="ban-days" class="form-input">
+      <option value="1">1 day</option><option value="7">7 days</option>
+      <option value="30" selected>30 days (1 month)</option>
+      <option value="90">90 days (3 months)</option><option value="365">1 year</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+    <button onclick="closeModal('ban-modal')" style="padding:10px 20px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text2);cursor:pointer">Cancel</button>
+    <button onclick="submitBan()" style="padding:10px 20px;background:var(--red);border:none;border-radius:7px;color:#fff;cursor:pointer;font-weight:700">Confirm Ban</button>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block admin_js %}
+<script>
+let banUserId=null;
+function openBanModal(pk,username){banUserId=pk;document.getElementById('ban-username').textContent='@'+username;openModal('ban-modal')}
+async function submitBan(){
+  const days=document.getElementById('ban-days').value;
+  const fd=new FormData();fd.append('days',days);fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm(`/admin-panel/users/${banUserId}/ban/`,fd);
+  if(d.ok){
+    showToast('User banned successfully','success');
+    const badge=document.getElementById(`status-badge-${banUserId}`);
+    if(badge){badge.className='badge badge-red';badge.textContent='⛔ Banned'}
+    closeModal('ban-modal');
+  } else showToast(d.error,'error');
+}
+async function unbanUser(pk){
+  const d=await postForm(`/admin-panel/users/${pk}/unban/`,new FormData());
+  if(d.ok){
+    showToast('User unbanned!','success');
+    const badge=document.getElementById(`status-badge-${pk}`);
+    if(badge){badge.className='badge badge-green';badge.textContent='✓ Active'}
+  } else showToast(d.error,'error');
+}
+async function deleteUser(pk){
+  const d=await postForm(`/admin-panel/users/${pk}/delete/`,new FormData());
+  if(d.ok){showToast('User deleted','success');document.getElementById(`user-row-${pk}`).remove()}
+  else showToast(d.error,'error');
+}
+function filterTable(input,tbodyId,colIdx){
+  const q=input.value.toLowerCase();
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(tr=>{
+    const cell=tr.cells[colIdx];
+    tr.style.display=!cell||cell.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+</script>
+{% endblock %}

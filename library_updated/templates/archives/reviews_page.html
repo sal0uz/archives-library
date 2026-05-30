@@ -1,0 +1,78 @@
+{% extends 'archives/base.html' %}
+{% block title %}Book Reviews – Archives Library{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+  <div class="section-header" style="margin-bottom:24px"><div class="section-title">Book Reviews</div></div>
+  {% for r in reviews %}
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:14px;color:#0f0e0b;font-weight:700;overflow:hidden;flex-shrink:0">
+          {% if r.user.avatar %}<img src="{{ r.user.avatar.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ r.user.get_full_name|first|default:r.user.username|first|upper }}{% endif %}
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">{{ r.user.get_full_name|default:r.user.username }}</div>
+          <div style="font-size:12px;color:var(--text3)">{{ r.created_at|date:"M d, Y" }}</div>
+        </div>
+      </div>
+      <a href="{% url 'book_detail' r.book.slug %}" style="font-size:12px;color:var(--gold);background:rgba(201,168,76,.1);padding:4px 10px;border-radius:12px">{{ r.book.title|truncatechars:30 }}</a>
+    </div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.6">{{ r.body }}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+      <button class="like-btn" data-type="review" data-id="{{ r.pk }}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;display:flex;align-items:center;gap:4px">
+        <span class="like-icon">{% if user in r.likes.all %}❤️{% else %}🤍{% endif %}</span>
+        <span class="like-count">{{ r.like_count }}</span>
+      </button>
+      {% if r.user == user %}
+      <button class="delete-btn" data-type="review" data-id="{{ r.pk }}" style="background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:14px">🗑️</button>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="empty-state"><i class="fas fa-star"></i><h3>No reviews yet</h3><p>Be the first to review a book!</p></div>
+  {% endfor %}
+</div>
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+    {% for cat in categories %}<a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>{% endfor %}
+  </div>
+</div>
+</div>
+{% endwith %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle like buttons
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const type = this.dataset.type;
+            const id = this.dataset.id;
+            const icon = this.querySelector('.like-icon');
+            const countSpan = this.querySelector('.like-count');
+            
+            const d = await postForm(`/reviews/like/${id}/`, new FormData());
+            if (d.ok) {
+                icon.textContent = d.liked ? '❤️' : '🤍';
+                countSpan.textContent = d.count;
+            }
+        });
+    });
+    
+    // Handle delete buttons
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to delete this?')) return;
+            
+            const id = this.dataset.id;
+            const itemDiv = this.closest('div[style*="background"]');
+            const d = await postForm(`/reviews/${id}/delete/`, new FormData());
+            if (d.ok) {
+                itemDiv.remove();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

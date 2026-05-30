@@ -1,0 +1,83 @@
+{% extends 'archives/base.html' %}
+{% block title %}Settings – Archives Library{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+  <div class="section-header" style="margin-bottom:24px"><div class="section-title">Settings</div></div>
+
+  <div class="form-panel">
+    <div class="form-panel-title">Account Settings</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">First Name</label><input type="text" id="s-first" class="form-input" value="{{ user.first_name }}" placeholder="First name"></div>
+      <div class="form-group"><label class="form-label">Last Name</label><input type="text" id="s-last" class="form-input" value="{{ user.last_name }}" placeholder="Last name"></div>
+      <div class="form-group span-2"><label class="form-label">Email</label><input type="email" id="s-email" class="form-input" value="{{ user.email }}"></div>
+      <div class="form-group span-2"><label class="form-label">Bio</label><textarea id="s-bio" class="form-input" style="height:80px">{{ user.bio }}</textarea></div>
+    </div>
+    <button class="btn-primary" onclick="saveSettings()" style="font-size:14px;padding:11px 28px">Save Changes</button>
+  </div>
+
+  <div class="form-panel">
+    <div class="form-panel-title">Change Password</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Current Password</label><input type="password" id="pw-old" class="form-input" placeholder="Current password"></div>
+      <div class="form-group"><label class="form-label">New Password</label><input type="password" id="pw-new" class="form-input" placeholder="At least 6 characters"></div>
+    </div>
+    <button class="btn-primary" onclick="changePw()" style="font-size:14px;padding:11px 28px">Update Password</button>
+  </div>
+
+  <div class="form-panel">
+    <div class="form-panel-title">Profile Picture</div>
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="width:70px;height:70px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:28px;color:#0f0e0b;font-weight:700">
+        {% if user.avatar %}<img src="{{ user.avatar.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ user.get_full_name|first|default:user.username|first|upper }}{% endif %}
+      </div>
+      <div>
+        <button onclick="document.getElementById('avatar-upload').click()" class="btn-secondary"><i class="fas fa-upload"></i> Upload New Photo</button>
+        <input type="file" id="avatar-upload" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+        <p style="font-size:12px;color:var(--text3);margin-top:8px">JPG, PNG, WebP · Max 5MB</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+    {% for cat in categories %}
+    <a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>
+    {% endfor %}
+  </div>
+</div>
+</div>
+{% endwith %}
+{% endblock %}
+{% block extra_js %}
+<script>
+async function saveSettings(){
+  const fd=new FormData();
+  fd.append('first_name',document.getElementById('s-first').value);
+  fd.append('last_name',document.getElementById('s-last').value);
+  fd.append('email',document.getElementById('s-email').value);
+  fd.append('bio',document.getElementById('s-bio').value);
+  fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm("{% url 'profile' %}",fd);
+  if(d.ok)showToast('Settings saved!','success');else showToast(d.error,'error');
+}
+async function changePw(){
+  const fd=new FormData();
+  fd.append('old_password',document.getElementById('pw-old').value);
+  fd.append('new_password',document.getElementById('pw-new').value);
+  fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm("{% url 'change_password' %}",fd);
+  if(d.ok){showToast('Password changed!','success');document.getElementById('pw-old').value='';document.getElementById('pw-new').value='';}
+  else showToast(d.error,'error');
+}
+async function uploadAvatar(input){
+  const f=input.files[0];if(!f)return;
+  const fd=new FormData();fd.append('avatar',f);fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await fetch("{% url 'profile' %}",{method:'POST',body:fd}).then(r=>r.json());
+  if(d.ok){showToast('Avatar updated!','success');setTimeout(()=>location.reload(),800)}
+  else showToast(d.error,'error');
+}
+</script>
+{% endblock %}

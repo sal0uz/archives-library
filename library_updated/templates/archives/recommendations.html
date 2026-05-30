@@ -1,0 +1,69 @@
+{% extends 'archives/base.html' %}
+{% block title %}AI Recommendations – Archives Library{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+
+  <div class="section-header" style="margin-bottom:8px">
+    <div class="section-title">🤖 AI Book Recommendations</div>
+  </div>
+  <p style="color:var(--text3);font-size:14px;margin-bottom:24px">
+    Machine learning algorithms analyze your reading history to find your next great book.
+  </p>
+
+  <!-- YOUR READING HISTORY -->
+  <div style="background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.15);border-radius:10px;padding:16px;margin-bottom:24px">
+    <div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+      <i class="fas fa-history"></i> Your Reading Signal ({{ user_books|length }} books)
+    </div>
+    {% if user_books %}
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      {% for b in user_books %}
+      <a href="{% url 'book_detail' b.slug %}" style="text-decoration:none">
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;transition:all .2s"
+          onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+          📖 {{ b.title|truncatechars:30 }}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="font-size:13px;color:var(--text3)">No reading history yet. Download or like books to get personalized recommendations!</p>
+    {% endif %}
+  </div>
+
+  <!-- RECOMMENDATIONS GRID -->
+  {% if recs %}
+  <div class="section-header" style="margin-bottom:16px">
+    <div class="section-title" style="font-size:18px">
+      Recommended for You
+      <span style="font-size:12px;font-family:'Source Serif 4',serif;font-weight:400;color:var(--text3);margin-left:10px">
+        via Content-Based Filtering
+      </span>
+    </div>
+  </div>
+  <div class="books-grid">
+    {% for book in recs %}
+    {% include 'archives/partials/book_card.html' with liked_ids=liked_ids %}
+    {% endfor %}
+  </div>
+  {% elif user_books %}
+  <div class="empty-state"><i class="fas fa-robot"></i><h3>No new recommendations</h3><p>You may have already seen all similar books. Try a different algorithm above.</p></div>
+  {% else %}
+  <div class="empty-state"><i class="fas fa-robot"></i><h3>Nothing to recommend yet</h3><p>Start downloading or liking books — the AI will learn your taste and recommend more.</p></div>
+  {% endif %}
+
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+    {% for cat in categories %}<a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>{% endfor %}
+  </div>
+</div>
+</div>
+{% endwith %}
+{% endblock %}

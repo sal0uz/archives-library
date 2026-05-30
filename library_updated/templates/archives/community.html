@@ -1,0 +1,209 @@
+{% extends 'archives/base.html' %}
+{% block title %}Community – Archives Library{% endblock %}
+{% block nav_home %}{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+  <div class="section-header" style="margin-bottom:20px;align-items:center;gap:16px">
+    <div>
+      <div class="section-title">Educated Community</div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <a href="?" class="btn-secondary" style="padding:8px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;{% if not show_mine %}background:var(--gold);color:#0f0e0b;border-color:var(--gold);{% endif %}">All posts</a>
+        <a href="?mine=1" class="btn-secondary" style="padding:8px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;{% if show_mine %}background:var(--gold);color:#0f0e0b;border-color:var(--gold);{% endif %}">My posts</a>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="openModal('new-post-modal')" style="font-size:13px;padding:10px 20px">+ New Post</button>
+  </div>
+  <div id="posts-list">
+  {% for post in posts %}
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px" id="post-{{ post.pk }}">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:15px;color:#0f0e0b;font-weight:700;overflow:hidden;flex-shrink:0">
+        {% if post.author.avatar %}<img src="{{ post.author.avatar.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ post.author.get_full_name|first|default:post.author.username|first|upper }}{% endif %}
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">{{ post.author.get_full_name|default:post.author.username }}</div>
+        <div style="font-size:12px;color:var(--text3)">{{ post.created_at|timesince }} ago</div>
+      </div>
+      {% if post.author == request.user %}
+      <button onclick="deletePost({{ post.pk }})" style="margin-left:auto;background:none;border:none;padding:0;font-size:18px;cursor:pointer">🗑️</button>
+      {% endif %}
+      {% if is_admin and post.author != request.user %}
+      <button onclick="deletePost({{ post.pk }})" style="margin-left:auto;background:none;border:none;padding:0;font-size:18px;cursor:pointer;opacity:0.6">🗑️</button>
+      {% endif %}
+    </div>
+    <h3 style="font-family:'Playfair Display',serif;font-size:17px;margin-bottom:8px;color:var(--text)">{{ post.topic }}</h3>
+    <p style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:14px">{{ post.body }}</p>
+    <div style="display:flex;gap:16px;font-size:13px;color:var(--text3);align-items:center">
+      <button onclick="likePost({{ post.pk }},this)" style="background:none;border:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:4px;font-size:13px;transition:all .2s" data-liked="{% if request.user in post.likes.all %}true{% else %}false{% endif %}">
+        <span class="post-like-icon" data-post-id="{{ post.pk }}">{% if request.user in post.likes.all %}❤️{% else %}🤍{% endif %}</span> <span id="like-count-{{ post.pk }}">{{ post.like_count }}</span>
+      </button>
+      <span>💬 <span id="comment-count-{{ post.pk }}">{{ post.comment_count }}</span></span>
+      <span style="cursor:pointer" onclick="sharePost()">🔗 Share</span>
+    </div>
+
+    <div id="post-comments-{{ post.pk }}" style="margin-top:18px">
+      {% if post.post_comments.all %}
+        {% for comment in post.post_comments.all %}
+        <div id="comment-{{ comment.pk }}" style="padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;position:relative">
+          <div style="display:flex;gap:12px;margin-bottom:8px;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">{{ comment.author.get_full_name|default:comment.author.username }}</div>
+            <span style="font-size:12px;color:var(--text3)">{{ comment.created_at|timesince }} ago</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button onclick="likeComment({{ comment.pk }}, this)" style="background:none;border:none;padding:0;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:4px;color:var(--text3)" data-liked="{% if request.user in comment.likes.all %}true{% else %}false{% endif %}">
+              <span class="comment-like-icon" data-comment-id="{{ comment.pk }}">{% if request.user in comment.likes.all %}❤️{% else %}🤍{% endif %}</span>
+              <span id="like-count-comment-{{ comment.pk }}">{{ comment.like_count }}</span>
+            </button>
+            {% if comment.author == request.user or is_admin %}
+            <button onclick="deleteComment({{ comment.pk }}, {{ post.pk }})" style="background:none;border:none;padding:0;font-size:16px;cursor:pointer">🗑️</button>
+            {% endif %}
+          </div>
+          </div>
+          <p style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:0">{{ comment.body }}</p>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="no-comments" style="font-size:13px;color:var(--text3);margin-bottom:12px">No comments yet. Be the first to reply!</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:10px;display:grid;gap:10px">
+      <textarea id="comment-body-{{ post.pk }}" class="form-input" style="height:90px" placeholder="Leave a comment or reply…"></textarea>
+      <button class="btn-primary" onclick="submitComment({{ post.pk }})" style="font-size:14px;padding:10px 20px;max-width:160px">Comment</button>
+    </div>
+  </div>
+  {% empty %}
+  <div class="empty-state"><i class="fas fa-users"></i>
+    <h3>{% if show_mine %}You have no posts yet{% else %}No posts yet{% endif %}</h3>
+    <p>{% if show_mine %}Create your first post in the community.{% else %}Start the conversation!{% endif %}</p>
+  </div>
+  {% endfor %}
+  </div>
+  <div id="new-posts"></div>
+</div>
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+    {% for cat in categories %}<a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>{% endfor %}
+  </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="new-post-modal">
+<div class="modal-box">
+  <div class="modal-title">New Community Post</div>
+  <div class="form-group" style="margin-top:8px"><label class="form-label">Topic / Title</label><input type="text" id="post-topic" class="form-input" placeholder="What's on your mind?"></div>
+  <div class="form-group"><label class="form-label">Content</label><textarea id="post-body" class="form-input" style="height:120px" placeholder="Share your thoughts, questions, or insights…"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn-secondary" onclick="closeModal('new-post-modal')">Cancel</button>
+    <button class="btn-primary" onclick="submitPost()" style="font-size:14px;padding:10px 24px">Post</button>
+  </div>
+</div>
+</div>
+{% endwith %}
+{% endblock %}
+{% block extra_js %}
+<script>
+async function likePost(pk,btn){
+  const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm(`/community/like/${pk}/`,fd);
+  if(d.ok){
+    const icon = document.querySelector(`.post-like-icon[data-post-id="${pk}"]`);
+    const countSpan = document.getElementById(`like-count-${pk}`);
+    icon.textContent = d.liked ? '❤️' : '🤍';
+    countSpan.textContent = d.count;
+    btn.setAttribute('data-liked', d.liked);
+  }
+}
+
+async function likeComment(pk, btn){
+  const fd = new FormData();fd.append('csrfmiddlewaretoken', CSRF);
+  const d = await postForm(`/community/comment/${pk}/like/`, fd);
+  if(d.ok){
+    const icon = document.querySelector(`.comment-like-icon[data-comment-id="${pk}"]`);
+    const countSpan = document.getElementById(`like-count-comment-${pk}`);
+    icon.textContent = d.liked ? '❤️' : '🤍';
+    countSpan.textContent = d.count;
+    btn.setAttribute('data-liked', d.liked);
+  }
+}
+async function submitPost(){
+  const topic=document.getElementById('post-topic').value.trim();
+  const body=document.getElementById('post-body').value.trim();
+  if(!topic||!body){showToast('Please fill all fields','error');return}
+  const fd=new FormData();fd.append('topic',topic);fd.append('body',body);fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm("{% url 'create_post' %}",fd);
+  if(d.ok){
+    closeModal('new-post-modal');
+    document.getElementById('post-topic').value='';
+    document.getElementById('post-body').value='';
+    showToast('Post published!','success');
+    setTimeout(()=>{
+      const params = new URLSearchParams(window.location.search);
+      const suffix = params.has('mine') ? `?mine=${params.get('mine')}` : '';
+      location.href = window.location.pathname + suffix;
+    }, 500);
+  } else showToast(d.error,'error');
+}
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, function(tag){
+    const chars = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'};
+    return chars[tag] || tag;
+  });
+}
+async function submitComment(postPk){
+  const body = document.getElementById(`comment-body-${postPk}`).value.trim();
+  if(!body){showToast('Please write a comment.','error');return}
+  const fd = new FormData();fd.append('body', body);fd.append('csrfmiddlewaretoken', CSRF);
+  const d = await postForm(`/community/comment/${postPk}/`, fd);
+  if(d.ok){
+    const target = document.getElementById(`post-comments-${postPk}`);
+    const noComments = target.querySelector('.no-comments');
+    if(noComments) noComments.remove();
+    target.insertAdjacentHTML('beforeend', `
+      <div id="comment-${d.comment_id}" style="padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;position:relative">
+        <div style="display:flex;gap:12px;margin-bottom:8px;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(d.author)}</div>
+            <span style="font-size:12px;color:var(--text3)">${escapeHtml(d.date)}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button onclick="likeComment(${d.comment_id}, this)" style="background:none;border:none;padding:0;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:4px;color:var(--text3)" data-liked="false">
+              <span class="comment-like-icon" data-comment-id="${d.comment_id}">🤍</span>
+              <span id="like-count-comment-${d.comment_id}">0</span>
+            </button>
+            <button onclick="deleteComment(${d.comment_id}, ${postPk})" style="background:none;border:none;padding:0;font-size:16px;cursor:pointer">🗑️</button>
+          </div>
+        </div>
+        <p style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:0">${escapeHtml(d.body)}</p>
+      </div>
+    `);
+    document.getElementById(`comment-body-${postPk}`).value='';
+    const countSpan = document.getElementById(`comment-count-${postPk}`);
+    if(countSpan) countSpan.textContent = d.comment_count;
+    showToast('Comment posted!','success');
+  } else showToast(d.error,'error');
+}
+
+async function deletePost(pk){
+  if(!confirm('Delete this post?')) return;
+  const d = await postForm(`/community/post/${pk}/delete/`, new FormData());
+  if(d.ok){document.getElementById(`post-${pk}`)?.remove();showToast('Post deleted.','success')} else showToast(d.error,'error');
+}
+
+async function deleteComment(pk, postPk){
+  if(!confirm('Delete this comment?')) return;
+  const d = await postForm(`/community/comment/${pk}/delete/`, new FormData());
+  if(d.ok){document.getElementById(`comment-${pk}`)?.remove();
+    const countSpan = document.getElementById(`comment-count-${postPk}`);
+    if(countSpan) countSpan.textContent = d.comment_count;
+    showToast('Comment deleted.','success');
+  } else showToast(d.error,'error');
+}
+
+function sharePost(){navigator.clipboard&&navigator.clipboard.writeText(window.location.href);showToast('Link copied!','success')}
+</script>
+{% endblock %}

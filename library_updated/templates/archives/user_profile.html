@@ -1,0 +1,279 @@
+{% extends 'archives/base.html' %}
+
+{% block content %}
+<div class="app-layout">
+  <div class="main-content">
+    <!-- User Header -->
+    <div class="sidebar-card" style="background:linear-gradient(135deg,var(--bg3),var(--bg2));margin-bottom:24px;overflow:visible">
+      <div style="padding:28px;text-align:center">
+        <div class="account-avatar" style="width:80px;height:80px;font-size:32px;margin:0 auto 16px">
+          {% if profile_user.avatar %}<img src="{{ profile_user.avatar.url }}" alt="">{% else %}{{ profile_user.get_full_name|first|upper|default:profile_user.username|first|upper }}{% endif %}
+        </div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:28px;color:var(--text);margin-bottom:4px">{{ profile_user.get_full_name|default:profile_user.username }}</h1>
+        <p style="color:var(--text3);font-size:13px;margin-bottom:16px">@{{ profile_user.username }}</p>
+        <p style="color:var(--text2);margin-bottom:20px;line-height:1.6">{{ profile_user.bio }}</p>
+        <div style="display:flex;gap:24px;justify-content:center;margin-bottom:16px;font-size:13px">
+          <div><div style="color:var(--gold);font-weight:700">{{ uploaded_books.count }}</div><div style="color:var(--text3)">Books Uploaded</div></div>
+          <div style="cursor:pointer;transition:all .2s" onclick="openFollowersModal('{{ profile_user.username }}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"><div style="color:var(--gold);font-weight:700">{{ followers_count }}</div><div style="color:var(--text3)">Followers</div></div>
+          <div style="cursor:pointer;transition:all .2s" onclick="openFollowingModal('{{ profile_user.username }}')" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"><div style="color:var(--gold);font-weight:700">{{ following_count }}</div><div style="color:var(--text3)">Following</div></div>
+          <div><div style="color:var(--gold);font-weight:700">{{ reviews.count }}</div><div style="color:var(--text3)">Reviews</div></div>
+        </div>
+        {% if user != profile_user %}
+        <button onclick="followUser('{{ profile_user.username }}')" class="btn-primary" id="follow-btn">
+          <i class="fas fa-{% if is_following %}check{% else %}plus{% endif %}"></i> {% if is_following %}Following{% else %}Follow{% endif %}
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Books Uploaded -->
+    <div class="section-header" style="margin-bottom:20px">
+      <h2 class="section-title">Books Uploaded by {{ profile_user.first_name|default:profile_user.username }}</h2>
+    </div>
+    {% if uploaded_books %}
+    <div class="books-grid">
+      {% for book in uploaded_books %}
+      <div class="book-card" onclick="window.location.href='{% url 'book_detail' book.slug %}'">
+        <div class="book-cover">
+          {% if book.cover_url %}<img src="{{ book.cover_url }}" alt="{{ book.title }}">{% else %}<div class="book-cover-placeholder">📖</div>{% endif %}
+        </div>
+        <div class="book-info">
+          <div class="book-title">{{ book.title }}</div>
+          <div class="book-author">{{ book.authors.first.name|default:"Unknown" }}</div>
+          <div class="book-rating">
+            <span class="stars">{{ book.average_rating|stringformat:"1.0f" }}★</span>
+            <span class="rating-count">({{ book.rating_count }})</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-book"></i>
+      <h3>No Books Uploaded</h3>
+      <p style="color:var(--text3);font-size:13px">This user hasn't uploaded any books yet.</p>
+    </div>
+    {% endif %}
+
+    <!-- Liked Books -->
+    <div class="section-header" style="margin-top:32px;margin-bottom:20px">
+      <h2 class="section-title">Books Liked by {{ profile_user.first_name|default:profile_user.username }}</h2>
+    </div>
+    {% if liked_books %}
+    <div class="books-grid">
+      {% for book in liked_books %}
+      <div class="book-card" onclick="window.location.href='{% url 'book_detail' book.slug %}'">
+        <div class="book-cover">
+          {% if book.cover_url %}<img src="{{ book.cover_url }}" alt="{{ book.title }}">{% else %}<div class="book-cover-placeholder">📖</div>{% endif %}
+        </div>
+        <div class="book-info">
+          <div class="book-title">{{ book.title }}</div>
+          <div class="book-author">{{ book.authors.first.name|default:"Unknown" }}</div>
+          <div class="book-rating">
+            <span class="stars">{{ book.average_rating|stringformat:"1.0f" }}★</span>
+            <span class="rating-count">({{ book.rating_count }})</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-heart"></i>
+      <h3>No Liked Books</h3>
+      <p style="color:var(--text3);font-size:13px">This user hasn't liked any books yet.</p>
+    </div>
+    {% endif %}
+
+    <!-- Reviews -->
+    <div class="section-header" style="margin-top:32px;margin-bottom:20px">
+      <h2 class="section-title">Reviews by {{ profile_user.first_name|default:profile_user.username }}</h2>
+    </div>
+    {% if reviews %}
+    <div style="display:flex;flex-direction:column;gap:16px">
+      {% for review in reviews %}
+      <div class="sidebar-card">
+        <div style="padding:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <strong style="color:var(--gold)">{{ review.book.title }}</strong>
+            <a href="{% url 'book_detail' review.book.slug %}" style="color:var(--text3);font-size:12px;cursor:pointer">→ View book</a>
+          </div>
+          <p style="color:var(--text);line-height:1.6;margin-bottom:8px">{{ review.body }}</p>
+          <p style="color:var(--text3);font-size:12px">{{ review.created_at|date:"M d, Y" }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-comment"></i>
+      <h3>No Reviews Yet</h3>
+      <p style="color:var(--text3);font-size:13px">This user hasn't written any reviews yet.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+      {% for cat in categories %}
+      <a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item">
+        <span>{{ cat.name }}</span>
+        <span class="count">{{ cat.book_count }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Followers Modal -->
+<div class="modal-overlay" id="followers-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;padding:20px">
+  <div class="modal-box" style="width:90%;max-width:500px;max-height:80vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:var(--text);margin:0">Followers</h2>
+      <button onclick="document.getElementById('followers-modal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text2);padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="followers-list" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+</div>
+
+<!-- Following Modal -->
+<div class="modal-overlay" id="following-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;padding:20px">
+  <div class="modal-box" style="width:90%;max-width:500px;max-height:80vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:var(--text);margin:0">Following</h2>
+      <button onclick="document.getElementById('following-modal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--text2);padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="following-list" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+</div>
+
+<script>
+async function openFollowersModal(username){
+  const modal=document.getElementById('followers-modal');
+  const list=document.getElementById('followers-list');
+  list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Loading followers...</p>';
+  modal.style.display='flex';
+  
+  // Close modal when clicking outside
+  modal.onclick=function(e){
+    if(e.target===modal){
+      modal.style.display='none';
+    }
+  };
+  
+  try{
+    const res=await fetch(`/api/followers/${username}/`);
+    const data=await res.json();
+    if(data.ok && data.followers.length > 0){
+      list.innerHTML=data.followers.map(u=>`
+        <div style="display:flex;flex-direction:column;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;color:#0f0e0b;flex-shrink:0;font-size:16px">
+                ${u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover">` : u.first_letter}
+              </div>
+              <div style="min-width:0">
+                <a href="/user/${u.username}/" style="color:var(--text);text-decoration:none;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.full_name || u.username}</a>
+                <p style="color:var(--text3);font-size:12px;margin:2px 0 0 0">@${u.username}</p>
+              </div>
+            </div>
+            <a href="/user/${u.username}/" class="btn-secondary" style="margin:0;white-space:nowrap;text-decoration:none;padding:6px 12px;font-size:12px">View</a>
+          </div>
+          <div style="display:flex;gap:12px;font-size:12px;color:var(--text3);flex-wrap:wrap">
+            <span><strong>${u.liked_count}</strong> Liked</span>
+            <span><strong>${u.uploaded_count}</strong> Uploaded</span>
+            <span><strong>${u.downloads_count}</strong> Downloads</span>
+            <span><strong>${u.reads_count}</strong> Reads</span>
+          </div>
+        </div>
+      `).join('');
+    }else if(data.ok && data.followers.length === 0){
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">No followers yet</p>';
+    }else{
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading followers</p>';
+    }
+  }catch(e){
+    console.error('Followers error:', e);
+    list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading followers</p>';
+  }
+}
+async function openFollowingModal(username){
+  const modal=document.getElementById('following-modal');
+  const list=document.getElementById('following-list');
+  list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Loading following...</p>';
+  modal.style.display='flex';
+  
+  // Close modal when clicking outside
+  modal.onclick=function(e){
+    if(e.target===modal){
+      modal.style.display='none';
+    }
+  };
+  
+  try{
+    const res=await fetch(`/api/following/${username}/`);
+    const data=await res.json();
+    if(data.ok && data.following.length > 0){
+      list.innerHTML=data.following.map(u=>`
+        <div style="display:flex;flex-direction:column;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;color:#0f0e0b;flex-shrink:0;font-size:16px">
+                ${u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover">` : u.first_letter}
+              </div>
+              <div style="min-width:0">
+                <a href="/user/${u.username}/" style="color:var(--text);text-decoration:none;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.full_name || u.username}</a>
+                <p style="color:var(--text3);font-size:12px;margin:2px 0 0 0">@${u.username}</p>
+              </div>
+            </div>
+            <a href="/user/${u.username}/" class="btn-secondary" style="margin:0;white-space:nowrap;text-decoration:none;padding:6px 12px;font-size:12px">View</a>
+          </div>
+          <div style="display:flex;gap:12px;font-size:12px;color:var(--text3);flex-wrap:wrap">
+            <span><strong>${u.liked_count}</strong> Liked</span>
+            <span><strong>${u.uploaded_count}</strong> Uploaded</span>
+            <span><strong>${u.downloads_count}</strong> Downloads</span>
+            <span><strong>${u.reads_count}</strong> Reads</span>
+          </div>
+        </div>
+      `).join('');
+    }else if(data.ok && data.following.length === 0){
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Not following anyone</p>';
+    }else{
+      list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading following</p>';
+    }
+  }catch(e){
+    console.error('Following error:', e);
+    list.innerHTML='<p style="color:var(--text3);text-align:center;padding:20px">Error loading following</p>';
+  }
+}
+
+async function followUser(username){
+  const btn=document.getElementById('follow-btn');
+  btn.disabled=true;
+  try{
+    const fd=new FormData();
+    fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
+    const res=await fetch(`/user/${username}/follow/`,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'},body:fd});
+    const data=await res.json();
+    if(data.ok){
+      if(data.following){
+        btn.innerHTML='<i class="fas fa-check"></i> Following';
+        btn.style.background='var(--gold)';
+        btn.style.color='#0f0e0b';
+      }else{
+        btn.innerHTML='<i class="fas fa-plus"></i> Follow';
+        btn.style.background='';
+        btn.style.color='';
+      }
+      showToast(data.message,'success');
+    }else{
+      showToast(data.error,'error');
+    }
+  }finally{
+    btn.disabled=false;
+  }
+}
+</script>
+{% endblock %}

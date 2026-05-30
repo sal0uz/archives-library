@@ -1,0 +1,109 @@
+{% extends 'archives/admin/base_admin.html' %}
+{% block admin_title %}Reviews{% endblock %}{% block active_reviews %}active{% endblock %}
+{% block admin_content %}
+<h2 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:24px;color:var(--text)">Reviews & Comments Moderation</h2>
+
+<!-- Filter tabs -->
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+  <button class="filter-btn active" onclick="filterReviews('all',this)" style="padding:8px 18px;background:var(--gold);border:none;border-radius:20px;color:#0f0e0b;font-size:13px;cursor:pointer;font-weight:700">All</button>
+  <button class="filter-btn" onclick="filterReviews('visible',this)" style="padding:8px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:13px;cursor:pointer">Visible</button>
+  <button class="filter-btn" onclick="filterReviews('flagged',this)" style="padding:8px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:13px;cursor:pointer">Flagged</button>
+  <button class="filter-btn" onclick="filterReviews('removed',this)" style="padding:8px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:13px;cursor:pointer">Removed</button>
+</div>
+
+<div class="data-table-wrapper">
+  <div class="data-table-header">
+    <span style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--text)">All Reviews ({{ reviews|length }})</span>
+  </div>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr><th>User</th><th>Book</th><th>Review</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody id="reviews-tbody">
+    {% for review in reviews %}
+    <tr id="review-row-{{ review.pk }}" data-status="{{ review.status }}">
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:12px;color:#0f0e0b;font-weight:700;overflow:hidden;flex-shrink:0">
+            {% if review.user.avatar %}<img src="{{ review.user.avatar.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ review.user.get_full_name|first|default:review.user.username|first|upper }}{% endif %}
+          </div>
+          <span style="color:var(--gold);font-size:13px">@{{ review.user.username }}</span>
+        </div>
+      </td>
+      <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <a href="{% url 'book_detail' review.book.slug %}" style="color:var(--text2)" target="_blank">{{ review.book.title|truncatechars:30 }}</a>
+      </td>
+      <td style="max-width:300px">
+        <div style="font-size:13px;color:var(--text2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ review.body }}</div>
+      </td>
+      <td>
+        <span class="badge {% if review.status == 'visible' %}badge-green{% elif review.status == 'flagged' %}badge-gold{% else %}badge-red{% endif %}" id="review-status-{{ review.pk }}">
+          {% if review.status == 'visible' %}✓ Visible{% elif review.status == 'flagged' %}⚑ Flagged{% else %}✗ Removed{% endif %}
+        </span>
+      </td>
+      <td style="font-size:12px;color:var(--text3)">{{ review.created_at|date:"M d, Y" }}</td>
+      <td style="white-space:nowrap">
+        {% if review.status != 'removed' %}
+        <button class="action-btn danger" onclick="removeReview({{ review.pk }})">Remove</button>
+        {% endif %}
+        <button class="action-btn" onclick="banFromReview({{ review.user.pk }},'{{ review.user.username|escapejs }}')" style="color:var(--red);border-color:rgba(192,57,43,.3)">Ban User</button>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="padding:32px;text-align:center;color:var(--text3)">No reviews yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Ban from review modal -->
+<div class="modal-overlay" id="ban-review-modal">
+<div class="modal-box" style="max-width:420px">
+  <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">Ban User for Inappropriate Review</div>
+  <p style="color:var(--text3);font-size:14px;margin-bottom:20px">Ban <strong id="ban-r-username" style="color:var(--gold)"></strong>?</p>
+  <div class="form-group"><label class="form-label">Duration</label>
+    <select id="ban-r-days" class="form-input">
+      <option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+    <button onclick="closeModal('ban-review-modal')" style="padding:10px 20px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text2);cursor:pointer">Cancel</button>
+    <button onclick="submitBanFromReview()" style="padding:10px 20px;background:var(--red);border:none;border-radius:7px;color:#fff;cursor:pointer;font-weight:700">Ban & Notify</button>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block admin_js %}
+<script>
+let banReviewUserId=null;
+function banFromReview(pk,username){banReviewUserId=pk;document.getElementById('ban-r-username').textContent='@'+username;openModal('ban-review-modal')}
+async function submitBanFromReview(){
+  const days=document.getElementById('ban-r-days').value;
+  const fd=new FormData();fd.append('days',days);fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm(`/admin-panel/users/${banReviewUserId}/ban/`,fd);
+  if(d.ok){showToast('User banned and notified!','success');closeModal('ban-review-modal')}
+  else showToast(d.error,'error');
+}
+async function removeReview(pk){
+  const fd=new FormData();fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm(`/admin-panel/reviews/${pk}/remove/`,fd);
+  if(d.ok){
+    showToast('Review removed and user notified','success');
+    const badge=document.getElementById(`review-status-${pk}`);
+    if(badge){badge.className='badge badge-red';badge.textContent='✗ Removed'}
+    document.querySelector(`#review-row-${pk}`).setAttribute('data-status','removed');
+  } else showToast(d.error,'error');
+}
+function filterReviews(status,btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>{
+    b.style.background=b===btn?'var(--gold)':'var(--bg3)';
+    b.style.color=b===btn?'#0f0e0b':'var(--text2)';
+    b.style.border=b===btn?'none':'1px solid var(--border)';
+    b.style.fontWeight=b===btn?'700':'normal';
+  });
+  document.querySelectorAll('#reviews-tbody tr').forEach(tr=>{
+    tr.style.display=status==='all'||tr.getAttribute('data-status')===status?'':'none';
+  });
+}
+</script>
+{% endblock %}

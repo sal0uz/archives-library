@@ -1,0 +1,52 @@
+{% extends 'archives/admin/base_admin.html' %}
+{% block admin_title %}Categories{% endblock %}{% block active_cats %}active{% endblock %}
+{% block admin_content %}
+<h2 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:24px;color:var(--text)">Manage Categories</h2>
+<div class="form-panel">
+  <div class="form-panel-title">Add New Category</div>
+  <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div class="form-group" style="flex:2;margin-bottom:0"><label class="form-label">Category Name *</label><input type="text" id="cat-name" class="form-input" placeholder="e.g. Science Fiction"></div>
+    <button class="btn-add" onclick="addCategory()"><i class="fas fa-plus"></i> Add Category</button>
+  </div>
+</div>
+<div class="data-table-wrapper">
+  <div class="data-table-header"><span style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--text)">All Categories ({{ categories|length }})</span></div>
+  <table>
+    <thead><tr><th>Name</th><th>Slug</th><th>Books</th><th>Actions</th></tr></thead>
+    <tbody id="cats-tbody">
+    {% for cat in categories %}
+    <tr id="cat-row-{{ cat.pk }}">
+      <td style="color:var(--text);font-weight:600">{{ cat.name }}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3)">{{ cat.slug }}</td>
+      <td style="font-family:'JetBrains Mono',monospace">{{ cat.cnt }}</td>
+      <td><button class="action-btn danger" onclick="confirmAction('Delete Category','Delete &quot;{{ cat.name|escapejs }}&quot;? Books in this category will lose their category.',()=>deleteCategory({{ cat.pk }}))">Delete</button></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4" style="padding:32px;text-align:center;color:var(--text3)">No categories yet. Add the first one above!</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block admin_js %}
+<script>
+async function addCategory(){
+  const name=document.getElementById('cat-name').value.trim();
+  if(!name){showToast('Please enter a category name','error');return}
+  const fd=new FormData();fd.append('name',name);fd.append('icon','');fd.append('csrfmiddlewaretoken',CSRF);
+  const d=await postForm("{% url 'admin_add_category' %}",fd);
+  if(d.ok){
+    showToast(`Category "${name}" added!`,'success');
+    const tbody=document.getElementById('cats-tbody');
+    const emptyRow=tbody.querySelector('td[colspan]');if(emptyRow)emptyRow.closest('tr').remove();
+    tbody.insertAdjacentHTML('afterbegin',`<tr id="cat-row-${d.cat_id}"><td style="color:var(--text);font-weight:600">${d.name}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3)">${d.name.toLowerCase().replace(/\s+/g,'-')}</td><td style="font-family:'JetBrains Mono',monospace">0</td><td><button class="action-btn danger" onclick="confirmAction('Delete','Delete this category?',()=>deleteCategory(${d.cat_id}))">Delete</button></td></tr>`);
+    document.getElementById('cat-name').value='';
+  } else showToast(d.error,'error');
+}
+async function deleteCategory(pk){
+  const d=await postForm(`/admin-panel/categories/${pk}/delete/`,new FormData());
+  if(d.ok){showToast('Category deleted','success');document.getElementById(`cat-row-${pk}`).remove()}
+  else showToast(d.error,'error');
+}
+</script>
+{% endblock %}

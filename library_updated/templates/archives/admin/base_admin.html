@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{% block admin_title %}Admin{% endblock %} – Archives Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Source+Serif+4:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--bg:#0f0e0b;--bg2:#161410;--bg3:#1e1b15;--bg4:#252018;--border:#3a3220;--border2:#4a4228;--gold:#c9a84c;--accent:#8b5e3c;--text:#f0e8d8;--text2:#c8b898;--text3:#907860;--red:#c0392b;--green:#27ae60;--radius:8px;--shadow:0 4px 24px rgba(0,0,0,.5);--transition:all .25s ease}
+*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--text);font-family:'Source Serif 4',serif;min-height:100vh}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+a{color:inherit;text-decoration:none}
+.top-nav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.4)}
+.admin-layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 60px)}
+.admin-sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto}
+.admin-sidebar-item{padding:12px 24px;display:flex;align-items:center;gap:12px;color:var(--text2);cursor:pointer;transition:var(--transition);font-size:14px;border-left:3px solid transparent;text-decoration:none}
+.admin-sidebar-item:hover,.admin-sidebar-item.active{color:var(--gold);background:rgba(201,168,76,.06);border-left-color:var(--gold)}
+.admin-sidebar-section{padding:8px 24px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--text3);margin-top:12px}
+.admin-main{padding:28px;background:var(--bg);overflow-y:auto}
+.form-panel{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:20px}
+.form-panel-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:var(--text);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.span-2{grid-column:span 2}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
+.form-input{width:100%;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;color:var(--text);font-family:'Source Serif 4',serif;font-size:14px;transition:var(--transition);outline:none}
+.form-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.1)}
+.form-input::placeholder{color:var(--text3)}
+select.form-input option{background:var(--bg4)}
+.btn-add{padding:10px 22px;background:linear-gradient(135deg,var(--gold),var(--accent));border:none;border-radius:7px;color:#0f0e0b;font-family:'Playfair Display',serif;font-weight:700;font-size:14px;cursor:pointer;transition:var(--transition)}
+.btn-add:hover{box-shadow:0 4px 16px rgba(201,168,76,.3);transform:translateY(-1px)}
+.data-table-wrapper{background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.data-table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+table{width:100%;border-collapse:collapse}
+th{padding:12px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);background:var(--bg2);border-bottom:1px solid var(--border)}
+td{padding:12px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(201,168,76,.03)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(39,174,96,.15);color:#27ae60}
+.badge-red{background:rgba(192,57,43,.15);color:#c0392b}
+.badge-gold{background:rgba(201,168,76,.15);color:var(--gold)}
+.action-btn{padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;transition:var(--transition);border:1px solid var(--border);background:none;color:var(--text2);margin-right:4px}
+.action-btn:hover{border-color:var(--gold);color:var(--gold)}
+.action-btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(192,57,43,.08)}
+.action-btn.success{background:rgba(39,174,96,.1);color:#27ae60;border-color:rgba(39,174,96,.3)}
+.upload-drop{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:10px 16px;cursor:pointer;color:var(--text2);background:var(--bg3);transition:var(--transition);font-size:13px;min-height:40px}
+.upload-drop:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08)}
+.modal-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:24px;display:flex;align-items:center;gap:12px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+.modal-actions .btn-add{padding:10px 22px;background:linear-gradient(135deg,var(--gold),var(--accent));border:none;border-radius:7px;color:#0f0e0b;font-family:'Playfair Display',serif;font-weight:700;font-size:14px;cursor:pointer;transition:var(--transition)}
+.modal-actions .btn-add:hover{box-shadow:0 4px 16px rgba(201,168,76,.3);transform:translateY(-1px)}
+.modal-actions .btn-secondary{padding:10px 20px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-family:'Source Serif 4',serif;font-size:13px;cursor:pointer;transition:var(--transition)}
+.modal-actions .btn-secondary:hover{border-color:var(--gold);color:var(--gold)}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 20px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text);animation:slideIn .3s ease;max-width:340px}
+.toast.success{border-color:rgba(39,174,96,.4)}.toast.success i{color:#27ae60}
+.toast.error{border-color:rgba(192,57,43,.4)}.toast.error i{color:var(--red)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:500px;width:90%;box-shadow:var(--shadow);animation:modalIn .2s ease;max-height:90vh;overflow-y:auto}
+@keyframes modalIn{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+<nav class="top-nav">
+  <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:8px">
+    <i class="fas fa-shield-alt" style="color:var(--red)"></i> Archives Admin
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="{% url 'home' %}" style="font-size:13px;color:var(--text3);display:flex;align-items:center;gap:6px"><i class="fas fa-external-link-alt"></i> View Site</a>
+    <a href="{% url 'logout' %}" style="display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:30px;color:var(--text2);font-size:13px">
+      <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--red),#8b0000);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700">A</div>
+      Administrator
+    </a>
+  </div>
+</nav>
+
+<div class="admin-layout">
+  <div class="admin-sidebar">
+    <div class="admin-sidebar-section">Main</div>
+    <a href="{% url 'admin_dashboard' %}" class="admin-sidebar-item {% block active_dashboard %}{% endblock %}"><i class="fas fa-chart-bar"></i> Dashboard</a>
+    <div class="admin-sidebar-section">Content</div>
+    <a href="{% url 'admin_books' %}" class="admin-sidebar-item {% block active_books %}{% endblock %}"><i class="fas fa-book"></i> Books</a>
+    <a href="{% url 'admin_categories' %}" class="admin-sidebar-item {% block active_cats %}{% endblock %}"><i class="fas fa-th-large"></i> Categories</a>
+    <a href="{% url 'admin_authors' %}" class="admin-sidebar-item {% block active_authors %}{% endblock %}"><i class="fas fa-user-edit"></i> Authors</a>
+    <a href="{% url 'admin_community' %}" class="admin-sidebar-item {% block active_community %}{% endblock %}"><i class="fas fa-comments"></i> Community</a>
+    <div class="admin-sidebar-section">Users</div>
+    <a href="{% url 'admin_users' %}" class="admin-sidebar-item {% block active_users %}{% endblock %}"><i class="fas fa-users"></i> Users</a>
+    <div class="admin-sidebar-section">System</div>
+    <a href="{% url 'logout' %}" class="admin-sidebar-item" style="color:var(--red)"><i class="fas fa-sign-out-alt"></i> Log Out</a>
+  </div>
+  <div class="admin-main">
+    {% block admin_content %}{% endblock %}
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px" id="confirm-title">Confirm</div>
+    <div style="color:var(--text2);font-size:14px;margin-bottom:24px" id="confirm-body">Are you sure?</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeModal('confirm-modal')" style="padding:10px 20px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text2);cursor:pointer">Cancel</button>
+      <button id="confirm-action-btn" style="padding:10px 20px;background:var(--red);border:none;border-radius:7px;color:#fff;cursor:pointer;font-weight:700">Confirm</button>
+    </div>
+  </div>
+</div>
+<script>
+const CSRF='{{ csrf_token }}';
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('open')})
+function showToast(msg,type='success'){
+  const c=document.getElementById('toast-container');const t=document.createElement('div');
+  t.className=`toast ${type}`;t.innerHTML=`<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
+  c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(100%)';t.style.transition='all .3s';setTimeout(()=>t.remove(),300)},3500);
+}
+async function postForm(url,fd){
+  const r=await fetch(url,{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});return r.json();
+}
+function confirmAction(title,body,onConfirm){
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-body').textContent=body;
+  document.getElementById('confirm-action-btn').onclick=()=>{closeModal('confirm-modal');onConfirm()};
+  openModal('confirm-modal');
+}
+function previewFile(input,previewId){
+  const f=input.files[0];if(!f)return;
+  const prev=document.getElementById(previewId);if(!prev)return;
+  const reader=new FileReader();
+  reader.onload=e=>{prev.src=e.target.result;prev.style.display='block'};
+  reader.readAsDataURL(f);
+}
+</script>
+{% block admin_js %}{% endblock %}
+</body>
+</html>

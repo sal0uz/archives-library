@@ -1,0 +1,148 @@
+{% extends 'archives/admin/base_admin.html' %}
+{% block admin_title %}Authors{% endblock %}{% block active_authors %}active{% endblock %}
+{% block admin_content %}
+<h2 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:24px;color:var(--text)">Manage Authors</h2>
+
+<!-- ADD AUTHOR BUTTON -->
+<button class="btn-add" onclick="openModal('admin-add-author-modal')" style="margin-bottom:24px"><i class="fas fa-plus"></i> Add New Author</button>
+
+<!-- ADD AUTHOR MODAL -->
+<div class="modal-overlay" id="admin-add-author-modal">
+<div class="modal-box" style="max-width:600px">
+  <div class="modal-title"><i class="fas fa-user-plus" style="color:var(--gold)"></i> Add New Author</div>
+  <div class="form-grid">
+    <div class="form-group"><label class="form-label">Full Name *</label><input type="text" id="a-name" class="form-input" placeholder="Author's full name"></div>
+    <div class="form-group"><label class="form-label">Nationality</label><input type="text" id="a-nat" class="form-input" placeholder="e.g. French"></div>
+    <div class="form-group"><label class="form-label">Birth Year</label><input type="number" id="a-birth" class="form-input" placeholder="e.g. 1903"></div>
+    <div class="form-group"><label class="form-label">Death Year (leave empty if living)</label><input type="number" id="a-death" class="form-input" placeholder="e.g. 1950 (leave empty if alive)"></div>
+    <div class="form-group">
+      <label class="form-label">Author Photo</label>
+      <button type="button" style="padding:8px 16px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);cursor:pointer;font-size:13px" onclick="document.getElementById('a-photo-input').click()">Choose Photo</button>
+      <input type="file" id="a-photo-input" accept="image/*" style="display:none" onchange="previewFile(this,'a-photo-preview')">
+      <img id="a-photo-preview" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-top:8px;display:none">
+    </div>
+    <div class="form-group span-2"><label class="form-label">Biography</label><textarea id="a-bio" class="form-input" style="height:80px;resize:vertical" placeholder="Short biography…"></textarea></div>
+  </div>
+  <div class="modal-actions">
+    <button type="button" class="btn-secondary" onclick="closeModal('admin-add-author-modal')">Cancel</button>
+    <button type="button" class="btn-add" onclick="addAuthor()"><i class="fas fa-plus"></i> Add Author</button>
+  </div>
+</div>
+</div>
+
+<!-- EDIT AUTHOR MODAL -->
+<div class="modal-overlay" id="edit-author-modal">
+<div class="modal-box" style="max-width:600px">
+  <div class="modal-title"><i class="fas fa-edit" style="color:var(--gold)"></i> Edit Author</div>
+  <div class="form-grid">
+    <div class="form-group"><label class="form-label">Full Name *</label><input type="text" id="ea-name" class="form-input" placeholder="Author's full name"></div>
+    <div class="form-group"><label class="form-label">Nationality</label><input type="text" id="ea-nat" class="form-input" placeholder="e.g. French"></div>
+    <div class="form-group"><label class="form-label">Birth Year</label><input type="number" id="ea-birth" class="form-input" placeholder="e.g. 1903"></div>
+    <div class="form-group"><label class="form-label">Death Year (leave empty if living)</label><input type="number" id="ea-death" class="form-input" placeholder="e.g. 1950 (leave empty if alive)"></div>
+    <div class="form-group">
+      <label class="form-label">Author Photo</label>
+      <button type="button" style="padding:8px 16px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);cursor:pointer;font-size:13px" onclick="document.getElementById('ea-photo-input').click()">Choose Photo</button>
+      <input type="file" id="ea-photo-input" accept="image/*" style="display:none" onchange="previewFile(this,'ea-photo-preview')">
+      <img id="ea-photo-preview" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin-top:8px;display:none">
+    </div>
+    <div class="form-group span-2"><label class="form-label">Biography</label><textarea id="ea-bio" class="form-input" style="height:80px;resize:vertical" placeholder="Short biography…"></textarea></div>
+  </div>
+  <div class="modal-actions">
+    <button type="button" class="btn-secondary" onclick="closeModal('edit-author-modal')">Cancel</button>
+    <button type="button" class="btn-add" onclick="saveEditAuthor()">Save Changes</button>
+  </div>
+</div>
+</div>
+<div class="data-table-wrapper">
+  <div class="data-table-header">
+    <span style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--text)">All Authors ({{ authors|length }})</span>
+    <input type="text" class="form-input" placeholder="Search…" style="width:200px" oninput="filterTable(this,'authors-tbody',1)">
+  </div>
+  <table>
+    <thead><tr><th>Photo</th><th>Name</th><th>Nationality</th><th>Birth</th><th>Books</th><th>Actions</th></tr></thead>
+    <tbody id="authors-tbody">
+    {% for author in authors %}
+    <tr id="author-row-{{ author.pk }}">
+      <td>
+        {% if author.photo %}
+          <img src="{{ author.photo.url }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">
+        {% else %}
+          <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:16px;color:#0f0e0b;font-weight:700">{{ author.name|first|upper }}</div>
+        {% endif %}
+      </td>
+      <td style="color:var(--text);font-weight:600">{{ author.name }}</td>
+      <td>{{ author.nationality|default:"—" }}</td>
+      <td style="font-family:'JetBrains Mono',monospace">{{ author.birth_year|default:"—" }}</td>
+      <td style="font-family:'JetBrains Mono',monospace">{{ author.cnt }}</td>
+      <td><button class="action-btn primary" onclick="editAuthor({{ author.pk }})">Edit</button> <button class="action-btn danger" onclick="confirmAction('Delete Author','Delete &quot;{{ author.name|escapejs }}&quot;?',()=>deleteAuthor({{ author.pk }}))">Delete</button></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="padding:32px;text-align:center;color:var(--text3)">No authors yet. Add the first one above!</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block admin_js %}
+<script>
+async function addAuthor(){
+  const name=document.getElementById('a-name').value.trim();
+  if(!name){showToast('Please enter author name','error');return}
+  const fd=new FormData();
+  fd.append('name',name);fd.append('nationality',document.getElementById('a-nat').value.trim());
+  fd.append('bio',document.getElementById('a-bio').value.trim());fd.append('birth_year',document.getElementById('a-birth').value);fd.append('death_year',document.getElementById('a-death').value);
+  fd.append('csrfmiddlewaretoken',CSRF);
+  const photo=document.getElementById('a-photo-input').files[0];
+  if(photo)fd.append('photo',photo);
+  const d=await fetch("{% url 'admin_add_author' %}",{method:'POST',body:fd}).then(r=>r.json());
+  if(d.ok){
+    showToast(`Author "${name}" added!`,'success');
+    closeModal('admin-add-author-modal');
+    const tbody=document.getElementById('authors-tbody');
+    const emptyRow=tbody.querySelector('td[colspan]');if(emptyRow)emptyRow.closest('tr').remove();
+    const photoHtml=d.photo?`<img src="${d.photo}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">`:`<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:16px;color:#0f0e0b;font-weight:700">${name[0]}</div>`;
+    tbody.insertAdjacentHTML('afterbegin',`<tr id="author-row-${d.author_id}"><td>${photoHtml}</td><td style="color:var(--text);font-weight:600">${name}</td><td>—</td><td>—</td><td>0</td><td><button class="action-btn primary" onclick="editAuthor(${d.author_id})">Edit</button> <button class="action-btn danger" onclick="confirmAction('Delete','Delete this author?',()=>deleteAuthor(${d.author_id}))">Delete</button></td></tr>`);
+    document.getElementById('a-name').value='';document.getElementById('a-nat').value='';document.getElementById('a-bio').value='';document.getElementById('a-birth').value='';document.getElementById('a-death').value='';document.getElementById('a-photo-input').value='';document.getElementById('a-photo-preview').style.display='none';
+  } else showToast(d.error,'error');
+}
+async function editAuthor(pk){
+  const d=await fetch(`/admin-panel/authors/${pk}/edit/`).then(r=>r.json());
+  if(d.error){showToast(d.error,'error');return;}
+  document.getElementById('ea-name').value = d.name || '';
+  document.getElementById('ea-nat').value = d.nationality || '';
+  document.getElementById('ea-bio').value = d.bio || '';
+  document.getElementById('ea-birth').value = d.birth_year || '';
+  document.getElementById('ea-death').value = d.death_year || '';
+  if(d.photo) document.getElementById('ea-photo-preview').src = d.photo;
+  document.getElementById('edit-author-modal').dataset.authorId = pk;
+  openModal('edit-author-modal');
+}
+async function saveEditAuthor(){
+  const pk = document.getElementById('edit-author-modal').dataset.authorId;
+  const fd=new FormData();
+  fd.append('name',document.getElementById('ea-name').value.trim());
+  fd.append('nationality',document.getElementById('ea-nat').value.trim());
+  fd.append('bio',document.getElementById('ea-bio').value.trim());
+  fd.append('birth_year',document.getElementById('ea-birth').value);
+  fd.append('death_year',document.getElementById('ea-death').value);
+  fd.append('csrfmiddlewaretoken',CSRF);
+  const photo=document.getElementById('ea-photo-input').files[0];
+  if(photo)fd.append('photo',photo);
+  const d=await fetch(`/admin-panel/authors/${pk}/edit/`,{method:'POST',body:fd}).then(r=>r.json());
+  if(d.ok){showToast(d.message,'success');closeModal('edit-author-modal');setTimeout(()=>location.reload(),1200)}
+  else showToast(d.error,'error');
+}
+async function deleteAuthor(pk){
+  const d=await postForm(`/admin-panel/authors/${pk}/delete/`,new FormData());
+  if(d.ok){showToast('Author deleted','success');document.getElementById(`author-row-${pk}`).remove()}
+  else showToast(d.error,'error');
+}
+function filterTable(input,tbodyId,colIdx){
+  const q=input.value.toLowerCase();
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(tr=>{
+    const cell=tr.cells[colIdx];
+    tr.style.display=!cell||cell.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+</script>
+{% endblock %}

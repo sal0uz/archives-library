@@ -1,0 +1,138 @@
+{% extends 'archives/base.html' %}
+{% block title %}{{ author.name }} – Archives Library{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<!-- Breadcrumb -->
+<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:10px">
+  <a href="{% url 'authors' %}" class="btn-secondary" style="padding:7px 14px;font-size:13px"><i class="fas fa-arrow-left"></i> All Authors</a>
+  <span style="color:var(--text3);font-size:13px">Authors / {{ author.name }}</span>
+</div>
+
+<div class="app-layout">
+<div class="main-content">
+
+  <!-- AUTHOR HERO CARD -->
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:32px;margin-bottom:28px;display:grid;grid-template-columns:160px 1fr;gap:32px">
+    <!-- Photo -->
+    <div>
+      <div style="width:160px;height:160px;border-radius:50%;overflow:hidden;border:3px solid var(--border2);background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:60px;font-weight:700;color:#0f0e0b">
+        {% if author.photo %}<img src="{{ author.photo.url }}" alt="{{ author.name }}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">
+        {% else %}{{ author.name|first|upper }}{% endif %}
+      </div>
+    </div>
+    <!-- Info -->
+    <div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--text);margin-bottom:10px">{{ author.name }}</h1>
+
+      <!-- Meta badges -->
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px">
+        {% if author.nationality %}
+        <span style="background:var(--bg4);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text2)">
+          🌍 {{ author.nationality }}
+        </span>
+        {% endif %}
+        {% if author.birth_year %}
+        <span style="background:var(--bg4);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text2)">
+          📅 {{ author.birth_year }}{% if author.death_year %} – {{ author.death_year }}{% else %} (living){% endif %}
+        </span>
+        {% endif %}
+        <span style="background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--gold)">
+          📚 {{ books|length }} book{{ books|length|pluralize }}
+        </span>
+        {% if total_downloads %}
+        <span style="background:var(--bg4);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text2)">
+          📥 {{ total_downloads }} downloads
+        </span>
+        {% endif %}
+      </div>
+
+      {% if author.bio %}
+      <p style="font-size:15px;color:var(--text2);line-height:1.8;margin-bottom:18px">{{ author.bio }}</p>
+      {% endif %}
+
+      <!-- Stats row -->
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div style="text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--gold)">{{ books|length }}</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Books</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--gold)">{{ total_reads|default:0 }}</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Reads</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--gold)">{{ total_downloads|default:0 }}</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Downloads</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--gold)">{{ avg_rating|default:"—" }}</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Avg Rating</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOKS BY THIS AUTHOR -->
+  <div style="margin-bottom:32px">
+    <div class="section-header" style="margin-bottom:18px">
+      <div class="section-title"><i class="fas fa-book-open"></i> Books by {{ author.name }}</div>
+    </div>
+
+    {% if books %}
+    <div class="books-grid">
+      {% for book in books %}
+      {% include 'archives/partials/book_card.html' with liked_ids=liked_ids %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-book"></i><h3>No books yet</h3><p>This author has no approved books in the library.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- REVIEWS about this author's books -->
+  {% if recent_reviews %}
+  <div style="margin-bottom:32px">
+    <div class="section-header" style="margin-bottom:18px">
+      <div class="section-title"><i class="fas fa-comments"></i> Recent Reviews</div>
+    </div>
+    {% for r in recent_reviews %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:11px;color:#0f0e0b;font-weight:700">
+          {{ r.user.get_full_name|first|default:r.user.username|first|upper }}
+        </div>
+        <div>
+          <span style="font-size:13px;font-weight:600;color:var(--text)">{{ r.user.get_full_name|default:r.user.username }}</span>
+          <span style="font-size:11px;color:var(--text3);margin-left:8px">on</span>
+          <a href="{% url 'book_detail' r.book.slug %}" style="font-size:12px;color:var(--gold);margin-left:4px;text-decoration:none">{{ r.book.title|truncatechars:40 }}</a>
+          <span style="font-size:11px;color:var(--text3);margin-left:10px">{{ r.created_at|date:"M d, Y" }}</span>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.6">{{ r.body|truncatechars:200 }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <!-- Other authors -->
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-user-edit"></i> Other Authors</div>
+    {% for a in other_authors %}
+    <a href="{% url 'author_detail' a.pk %}" class="sidebar-list-item">
+      <span>{{ a.name }}</span>
+      <span class="count">{{ a.cnt }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Categories</div>
+    {% for cat in categories %}<a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>{% endfor %}
+  </div>
+</div>
+</div>
+{% endwith %}
+{% endblock %}

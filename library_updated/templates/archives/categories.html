@@ -1,0 +1,28 @@
+{% extends 'archives/base.html' %}
+{% block title %}Categories – Archives Library{% endblock %}
+{% block nav_cats %}active{% endblock %}
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+  <div class="section-header" style="margin-bottom:24px"><div class="section-title">Book Categories</div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+  {% for cat in categories %}
+  <a href="{% url 'category_books' cat.slug %}" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:24px 20px;cursor:pointer;transition:all .2s;text-align:center;text-decoration:none;display:block" onmouseover="this.style.borderColor='var(--gold)';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='none'">
+    <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px">{{ cat.name }}</div>
+    <div style="font-size:12px;color:var(--text3)">{{ cat.cnt|default:0 }} books</div>
+  </a>
+  {% empty %}
+  <div class="empty-state" style="grid-column:span 4"><i class="fas fa-th-large"></i><h3>No categories yet</h3><p>Admin can add categories in the admin panel.</p></div>
+  {% endfor %}
+  </div>
+</div>
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-fire"></i> Popular Categories</div>
+    {% for cat in categories|slice:":8" %}<a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item"><span>{{ cat.name }}</span><span class="count">{{ cat.cnt|default:0 }}</span></a>{% endfor %}
+  </div>
+</div>
+</div>
+{% endwith %}
+{% endblock %}

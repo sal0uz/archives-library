@@ -1,0 +1,122 @@
+{% extends 'archives/base.html' %}
+{% block title %}Home – Archives Library{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+{% with all_categories=categories %}
+<div class="app-layout">
+<div class="main-content">
+
+  <!-- HERO SEARCH -->
+  <div class="hero-search">
+    <h2>Archives Library</h2>
+    <p>Search from thousands of books, authors, and categories</p>
+    <form action="{% url 'search' %}" method="get" class="search-bar">
+      <input type="text" name="q" class="search-input" placeholder="Search books, authors, categories…" autocomplete="off">
+      <button type="submit" class="btn-search"><i class="fas fa-search"></i> Search</button>
+    </form>
+  </div>
+
+  <!-- FILTER TABS -->
+  <div class="filter-tabs">
+    <button class="filter-tab active" onclick="scrollToSection('trending','this')">🔥 Trending Today</button>
+    <button class="filter-tab" onclick="scrollToSection('popular',this)">⭐ Popular Books</button>
+    <button class="filter-tab" onclick="scrollToSection('latest',this)">🆕 Latest Books</button>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-card-icon"><i class="fas fa-users"></i></div>
+      <div class="stat-card-num">{{ stats.visitors|default:0 }}</div><div class="stat-card-label">Visitors / Month</div></div>
+    <div class="stat-card"><div class="stat-card-icon"><i class="fas fa-search"></i></div>
+      <div class="stat-card-num">{{ stats.daily_searches|default:0 }}</div><div class="stat-card-label">Daily Searches</div></div>
+    <div class="stat-card"><div class="stat-card-icon"><i class="fas fa-book"></i></div>
+      <div class="stat-card-num">{{ stats.total_books }}</div><div class="stat-card-label">Books Available</div></div>
+    <div class="stat-card"><div class="stat-card-icon"><i class="fas fa-user-edit"></i></div>
+      <div class="stat-card-num">{{ stats.total_authors }}</div><div class="stat-card-label">Authors</div></div>
+  </div>
+
+  <!-- UPLOAD BANNER -->
+  <div class="upload-banner">
+    <div class="upload-banner-text">
+      <h3><i class="fas fa-cloud-upload-alt"></i> Share Your Knowledge</h3>
+      <p>Upload books to help our community grow. Every contribution matters.</p>
+    </div>
+    <button class="btn-primary" onclick="openModal('upload-modal')"><i class="fas fa-upload"></i> Upload a Book</button>
+  </div>
+
+  <!-- TRENDING -->
+  <div id="trending">
+    <div class="section-header">
+      <div class="section-title">🔥 Trending Today</div>
+    </div>
+    {% if trending %}
+    <div class="books-grid">
+      {% for book in trending %}{% include 'archives/partials/book_card.html' with liked_ids=liked_ids %}{% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-fire"></i><h3>No trending books yet</h3><p>Admin can mark books as trending</p></div>
+    {% endif %}
+  </div>
+
+  <!-- POPULAR -->
+  <div id="popular">
+    <div class="section-header"><div class="section-title">⭐ Popular Books</div></div>
+    {% if popular %}
+    <div class="books-grid">
+      {% for book in popular %}{% include 'archives/partials/book_card.html' with liked_ids=liked_ids %}{% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-star"></i><h3>No books yet</h3><p>Be the first to upload a book!</p></div>
+    {% endif %}
+  </div>
+
+  <!-- LATEST -->
+  <div id="latest">
+    <div class="section-header"><div class="section-title">🆕 Latest Books</div></div>
+    {% if latest %}
+    <div class="books-grid">
+      {% for book in latest %}{% include 'archives/partials/book_card.html' with liked_ids=liked_ids %}{% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-book-open"></i><h3>No books yet</h3><p>The library is empty. Upload the first book!</p></div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-th-large"></i> Book Categories</div>
+    {% for cat in categories %}
+    <a href="{% url 'category_books' cat.slug %}" class="sidebar-list-item">
+      <span>{{ cat.name }}</span>
+      <span class="count">{{ cat.cnt|default:0 }}</span>
+    </a>
+    {% empty %}
+    <div style="padding:16px;color:var(--text3);font-size:13px">No categories yet</div>
+    {% endfor %}
+  </div>
+  <div class="sidebar-card">
+    <div class="sidebar-title"><i class="fas fa-user-edit"></i> Top Authors</div>
+    {% for author in top_authors %}
+    <a href="{% url 'author_detail' author.pk %}" class="sidebar-list-item">
+      <span>{{ author.name }}</span>
+      <span class="count">{{ author.cnt }}</span>
+    </a>
+    {% empty %}
+    <div style="padding:16px;color:var(--text3);font-size:13px">No authors yet</div>
+    {% endfor %}
+  </div>
+
+</div>
+</div>
+{% endwith %}
+
+<script>
+function scrollToSection(id,btn){
+  document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'});
+}
+</script>
+{% endblock %}

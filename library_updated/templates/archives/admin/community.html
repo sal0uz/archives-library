@@ -1,0 +1,205 @@
+{% extends 'archives/admin/base_admin.html' %}
+{% block admin_title %}Community{% endblock %}{% block active_community %}active{% endblock %}
+{% block admin_content %}
+<h2 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:24px;color:var(--text)">Manage Community Posts</h2>
+
+<!-- SEARCH BAR -->
+<div class="data-table-wrapper" style="margin-bottom:20px">
+  <div class="data-table-header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <i class="fas fa-search" style="color:var(--text3)"></i>
+      <input type="text" id="search-input" placeholder="Search posts by topic, content, or author..." value="{{ q }}" style="flex:1;border:none;background:none;color:var(--text);font-size:14px;outline:none" onkeyup="filterTable(this,'posts-table',0)">
+    </div>
+  </div>
+</div>
+
+<!-- POSTS TABLE -->
+<div class="data-table-wrapper">
+  <table id="posts-table">
+    <thead>
+      <tr>
+        <th>Topic</th>
+        <th>Author</th>
+        <th>Content</th>
+        <th>Likes</th>
+        <th>Comments</th>
+        <th>Posted</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for post in posts %}
+    <tr>
+      <td style="font-weight:600;color:var(--gold);max-width:200px">
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ post.topic }}">{{ post.topic }}</div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          {% if post.author.avatar %}
+          <img src="{{ post.author.avatar.url }}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">
+          {% else %}
+          <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--accent));display:flex;align-items:center;justify-content:center;font-size:10px;color:#0f0e0b;font-weight:700">{{ post.author.username|first|upper }}</div>
+          {% endif %}
+          <span>{{ post.author.username }}</span>
+        </div>
+      </td>
+      <td style="max-width:300px">
+        <div style="overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4" title="{{ post.body }}">{{ post.body|truncatechars:150 }}</div>
+      </td>
+      <td>
+        <span class="badge badge-gold"><i class="fas fa-heart"></i>&nbsp;{{ post.like_count }}</span>
+      </td>
+      <td>
+        <span class="badge badge-green"><i class="fas fa-comments"></i>&nbsp;{{ post.post_comments.count }}</span>
+      </td>
+      <td style="color:var(--text3);font-size:12px">{{ post.created_at|timesince }}</td>
+      <td>
+        <button class="action-btn" onclick="viewPostComments({{ post.pk }}, '{{ post.topic|escapejs }}')">
+          <i class="fas fa-eye"></i> Comments
+        </button>
+        <button class="action-btn danger" onclick="deletePost({{ post.pk }}, '{{ post.topic|escapejs }}')">
+          <i class="fas fa-trash"></i> Delete
+        </button>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="7" style="padding:40px;text-align:center;color:var(--text3)">
+        <i class="fas fa-comments" style="font-size:24px;margin-bottom:12px;display:block"></i>
+        No community posts yet
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div style="display:none"><form id="csrf-form">{% csrf_token %}</form></div>
+
+<div class="modal-overlay" id="post-comments-modal">
+  <div class="modal-box" style="max-width:650px">
+    <div class="modal-title"><i class="fas fa-comments"></i> Post comments</div>
+    <div id="comments-modal-title" style="font-size:14px;color:var(--text2);margin-bottom:16px"></div>
+    <div id="post-comments-content" style="display:grid;gap:14px;max-height:60vh;overflow-y:auto;padding-right:4px"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" onclick="closeModal('post-comments-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+async function viewPostComments(pk, topic) {
+  const modal = document.getElementById('post-comments-modal');
+  openModal('post-comments-modal');
+  document.getElementById('comments-modal-title').textContent = `Comments for: ${topic}`;
+  document.getElementById('post-comments-content').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3)"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+
+  try {
+    const response = await fetch(`/admin-panel/community/${pk}/comments/`);
+    const data = await response.json();
+    if (!data.ok) {
+      document.getElementById('post-comments-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-circle"></i> ${data.error || 'Failed to load comments'}</div>`;
+      return;
+    }
+
+    if (!data.comments.length) {
+      document.getElementById('post-comments-content').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3)">No comments for this post.</div>';
+      return;
+    }
+
+    document.getElementById('post-comments-content').innerHTML = data.comments.map(comment => `
+      <div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;align-items:center">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--gold)">${comment.author}</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:3px">${comment.created_at}</div>
+          </div>
+          <button class="action-btn danger" onclick="deletePostComment(${comment.id}, ${pk}, '${topic.replace(/'/g,"\\'")}')">Delete</button>
+        </div>
+        <div style="font-size:14px;color:var(--text2);line-height:1.6;white-space:pre-wrap">${comment.body}</div>
+      </div>
+    `).join('');
+  } catch (err) {
+    document.getElementById('post-comments-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-circle"></i> Network error</div>`;
+  }
+}
+
+async function deletePostComment(commentId, postId, topic) {
+  if (!confirm('Delete this comment?')) return;
+  try {
+    const response = await fetch(`/admin-panel/community/comments/${commentId}/delete/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      }
+    });
+    const data = await response.json();
+    if (data.ok) {
+      showToast('Comment deleted', 'success');
+      viewPostComments(postId, topic);
+    } else {
+      showToast(data.error || 'Failed to delete comment', 'error');
+    }
+  } catch (err) {
+    showToast('Network error occurred', 'error');
+  }
+}
+
+async function deletePost(pk, topic) {
+  if (!confirm(`Are you sure you want to delete the post "${topic}"? This action cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/admin-panel/community/${pk}/delete/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      }
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast('Post deleted successfully', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast(data.error || 'Failed to delete post', 'error');
+    }
+  } catch (error) {
+    showToast('Network error occurred', 'error');
+  }
+}
+
+function filterTable(input, tbodyId, colIdx) {
+  const q = input.value.toLowerCase();
+  document.querySelectorAll(`#${tbodyId} tbody tr`).forEach(tr => {
+    const cells = tr.querySelectorAll('td');
+    const match = Array.from(cells).some(cell => cell.textContent.toLowerCase().includes(q));
+    tr.style.display = match ? '' : 'none';
+  });
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+    ${message}
+  `;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+</script>
+
+{% endblock %}
